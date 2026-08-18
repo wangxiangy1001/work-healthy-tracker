@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
+  <g transform="translate(256,240)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Heart -->
+    <path d="M0,60 C-50,10 -130,-20 -130,40 C-130,100 -30,150 0,180 C30,150 130,100 130,40 C130,-20 50,10 0,60Z" fill="#fff" stroke="none" opacity="0.95"/>
+    <!-- Activity bars -->
+    <rect x="-80" y="80" width="16" height="50" rx="8" fill="#fff" opacity="0.9"/>
+    <rect x="-50" y="60" width="16" height="70" rx="8" fill="#fff" opacity="0.9"/>
+    <rect x="-20" y="30" width="16" height="100" rx="8" fill="#fff" opacity="0.9"/>
+    <rect x="10" y="50" width="16" height="80" rx="8" fill="#fff" opacity="0.9"/>
+    <rect x="40" y="70" width="16" height="60" rx="8" fill="#fff" opacity="0.9"/>
+    <rect x="70" y="40" width="16" height="90" rx="8" fill="#fff" opacity="0.9"/>
+  </g>
+</svg>

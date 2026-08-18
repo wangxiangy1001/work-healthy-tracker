@@ -1,0 +1,2282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>活力记</title>
+  <meta name="theme-color" content="#f97316">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="活力记">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --coral: #f97316;
+      --coral-light: #fff7ed;
+      --coral-soft: #fed7aa;
+      --leaf: #65a30d;
+      --leaf-light: #f7fee7;
+      --sky: #f0f9ff;
+      --text: #292524;
+      --text-soft: #78716c;
+      --text-muted: #a8a29e;
+      --card: #ffffff;
+      --bg: #faf9f7;
+      --border: #f0efed;
+      --teal: #0d9488;
+      --teal-light: #f0fdfa;
+      --teal-soft: #99f6e4;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.04);
+      --shadow: 0 2px 8px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.06);
+      --radius: 20px;
+      --radius-lg: 24px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding-bottom: 100px;
+    }
+
+    /* ====== Header ====== */
+    .header {
+      padding: 48px 24px 16px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+    .header-greeting {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -.3px;
+      line-height: 1.2;
+      color: var(--text);
+    }
+    .header-date {
+      font-size: 14px;
+      color: var(--text-soft);
+      font-weight: 500;
+    }
+    .header-avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fecaca, #fed7aa);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    /* ====== Timer Banner ====== */
+    .timer-banner {
+      display: none;
+      margin: 0 20px;
+      padding: 14px 20px;
+      background: var(--coral);
+      color: #fff;
+      border-radius: 16px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      animation: breathe 2s ease-in-out infinite;
+    }
+    .timer-banner.active { display: block; }
+    .timer-banner .timer-banner-time { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    @keyframes breathe { 0%,100% { opacity: 1; } 50% { opacity: .82; } }
+
+    /* ====== Pages ====== */
+    .page {
+      display: none;
+      flex: 1;
+      padding: 0 20px;
+      overflow-y: auto;
+      animation: fadeUp .3s cubic-bezier(.2,.8,.2,1);
+    }
+    .page.active { display: block; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ====== Record Panel ====== */
+    .record-panel { padding-top: 4px; }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+      border: none;
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all .2s cubic-bezier(.2,.8,.2,1);
+      position: relative;
+      overflow: hidden;
+      min-height: 168px;
+      box-shadow: var(--shadow);
+      background: var(--card);
+    }
+    .action-btn:active { transform: scale(.965); }
+    .action-btn .icon { font-size: 48px; margin-bottom: 12px; transition: transform .2s ease; }
+    .action-btn:active .icon { transform: scale(.9); }
+    .action-btn .label { font-size: 17px; letter-spacing: .2px; }
+    .action-btn .sub { font-size: 12px; opacity: .5; margin-top: 6px; font-weight: 400; }
+
+    .btn-bathroom {
+      color: #d97706;
+      background: #fffbeb;
+    }
+    .btn-bathroom:active { background: #fef3c7; }
+
+    .btn-standing {
+      color: var(--coral);
+      background: var(--coral-light);
+    }
+    .btn-standing:active { background: #fed7aa; }
+    .btn-standing.timing {
+      background: var(--coral);
+      color: #fff;
+      animation: timerGlow 2s ease-in-out infinite;
+    }
+    .btn-standing.timing .timer-display {
+      font-size: 36px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      margin: 4px 0;
+      letter-spacing: 1px;
+    }
+    @keyframes timerGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(249,115,22,.3); } 50% { box-shadow: 0 0 0 16px rgba(249,115,22,0); } }
+
+    /* ====== Toast ====== */
+    .toast {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-120px);
+      background: #292524;
+      color: #fff;
+      padding: 12px 28px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 100;
+      transition: transform .4s cubic-bezier(.175,.885,.32,1.275);
+      pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { background: var(--leaf); }
+
+    /* ====== Section Title ====== */
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      letter-spacing: -.1px;
+    }
+
+    /* ====== Summary Cards ====== */
+    .summary-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .summary-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .summary-card .card-value {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -.5px;
+    }
+    .summary-card .card-label {
+      font-size: 13px;
+      color: var(--text-soft);
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    .summary-card.bathroom .card-value { color: #d97706; }
+    .summary-card.standing .card-value { color: var(--coral); }
+    .summary-card.full {
+      grid-column: 1 / -1;
+      margin-bottom: 16px;
+    }
+    .summary-card.full .card-value { font-size: 28px; color: var(--coral); }
+
+    /* ====== Step Card ====== */
+    .step-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 16px;
+    }
+    .step-card .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .step-card .step-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.1px;
+    }
+    .step-card .step-goal {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .step-card .step-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .step-card .step-value {
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -1px;
+      color: var(--teal);
+    }
+    .step-card .step-unit {
+      font-size: 16px;
+      color: var(--text-soft);
+      font-weight: 500;
+    }
+    .step-card .step-progress {
+      height: 8px;
+      background: #e7e5e4;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+    .step-card .step-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #14b8a6, #0d9488);
+      border-radius: 4px;
+      transition: width .5s cubic-bezier(.2,.8,.2,1);
+    }
+    .step-card .step-progress-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: right;
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+    .step-quick-btns {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .step-quick-btn {
+      flex: 1;
+      padding: 10px 0;
+      border: 1.5px solid #ccfbf1;
+      background: var(--teal-light);
+      color: var(--teal);
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .step-quick-btn:active { background: #ccfbf1; transform: scale(.96); }
+    .step-custom-row {
+      display: flex;
+      gap: 8px;
+    }
+    .step-custom-input {
+      flex: 1;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 15px;
+      background: var(--card);
+      color: var(--text);
+      outline: none;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      font-variant-numeric: tabular-nums;
+      transition: border-color .15s;
+    }
+    .step-custom-input:focus { border-color: var(--teal); }
+    .step-custom-input::placeholder { color: var(--text-muted); font-size: 13px; }
+    .step-custom-confirm {
+      padding: 12px 20px;
+      background: var(--teal);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    .step-custom-confirm:active { opacity: .8; }
+
+    /* ====== Recommendation ====== */
+    .rec-card {
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.55;
+      background: var(--card);
+      box-shadow: var(--shadow-sm);
+    }
+    .rec-card .rec-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .rec-card.warning { border-left: 3px solid #f59e0b; }
+    .rec-card.info { border-left: 3px solid #0ea5e9; }
+    .rec-card.good { border-left: 3px solid var(--leaf); }
+    .rec-card.excellent { border-left: 3px solid #22c55e; }
+
+    /* ====== AI Button ====== */
+    .ai-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 16px;
+      background: var(--card);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      margin: 20px 0 8px;
+      transition: all .2s ease;
+      letter-spacing: .1px;
+    }
+    .ai-btn:active { background: #f5f5f4; transform: scale(.98); }
+    .ai-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .ai-btn .ai-spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2px solid #e7e5e4;
+      border-top-color: var(--coral);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    .ai-btn.loading { border-color: var(--coral-soft); }
+    .ai-btn.loading .ai-spinner { display: block; }
+    .ai-btn.loading .ai-btn-text { opacity: .6; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .ai-result {
+      display: none;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      margin: 8px 0 16px;
+      line-height: 1.7;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .ai-result.show { display: block; animation: fadeUp .3s ease; }
+    .ai-result .ai-result-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--coral);
+    }
+    .ai-result.ai-error {
+      color: #b91c1c;
+      background: #fef2f2;
+    }
+    .ai-result.ai-error .ai-result-title { color: #b91c1c; }
+
+    /* ====== Dashboard ====== */
+    .chart-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 16px;
+    }
+    .chart-card canvas { max-height: 220px; }
+    .stat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-item {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+    }
+    .stat-item .stat-value { font-size: 24px; font-weight: 800; letter-spacing: -.3px; }
+    .stat-item.step .stat-value { color: var(--teal); }
+    .stat-item .stat-label { font-size: 13px; color: var(--text-soft); margin-top: 4px; }
+    .stat-item .stat-trend { font-size: 12px; margin-top: 6px; font-weight: 600; }
+    .stat-item .stat-trend.up { color: var(--leaf); }
+    .stat-item .stat-trend.down { color: #ef4444; }
+    .stat-item .stat-trend.neutral { color: var(--text-muted); }
+
+    /* ====== Timeline ====== */
+    .timeline { position: relative; padding-left: 28px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 10px; top: 6px; bottom: 6px;
+      width: 2px;
+      background: #f0efed;
+      border-radius: 1px;
+    }
+    .timeline-item {
+      position: relative;
+      padding: 10px 0 10px 16px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -22px; top: 50%;
+      transform: translateY(-50%);
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--coral-soft);
+    }
+    .timeline-item.bathroom::before { background: #fcd34d; }
+    .timeline-item.step::before { background: var(--teal-soft); }
+    .timeline-time { font-weight: 600; min-width: 50px; color: var(--text-soft); font-size: 13px; }
+    .timeline-label { flex: 1; font-weight: 500; }
+    .timeline-duration { color: var(--text-soft); font-size: 12px; }
+
+    /* ====== History ====== */
+    .history-date-group { margin-bottom: 20px; }
+    .history-date-header {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-soft);
+      padding: 8px 4px;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 2;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--card);
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 8px;
+      box-shadow: var(--shadow-sm);
+      transition: transform .2s ease;
+    }
+    .history-item .hi-icon {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .history-item .hi-icon.bathroom { background: #fffbeb; }
+    .history-item .hi-icon.standing { background: var(--coral-light); }
+    .history-item .hi-icon.step { background: var(--teal-light); }
+    .history-item .hi-info { flex: 1; min-width: 0; }
+    .history-item .hi-type { font-size: 15px; font-weight: 600; }
+    .history-item .hi-time { font-size: 13px; color: var(--text-soft); margin-top: 2px; }
+    .history-item .hi-duration { font-size: 14px; font-weight: 600; color: var(--coral); }
+    .history-item .hi-delete {
+      width: 32px; height: 32px;
+      border: none;
+      background: #fef2f2;
+      color: #ef4444;
+      border-radius: 50%;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all .15s;
+    }
+    .history-item .hi-delete:active { background: #fecaca; }
+    .history-item .hi-edit {
+      width: 32px; height: 32px;
+      border: none;
+      background: #f0f9ff;
+      color: #0ea5e9;
+      border-radius: 50%;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all .15s;
+    }
+    .history-item .hi-edit:active { background: #bae6fd; }
+
+    .empty-state {
+      text-align: center;
+      padding: 56px 16px;
+      color: var(--text-muted);
+    }
+    .empty-state .empty-icon { font-size: 56px; margin-bottom: 14px; opacity: .6; }
+    .empty-state .empty-text { font-size: 15px; }
+
+    /* ====== Settings ====== */
+    .settings-group { margin-bottom: 24px; }
+    .settings-btn {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: 18px 16px;
+      background: var(--card);
+      border: none;
+      border-radius: 16px;
+      margin-bottom: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      gap: 12px;
+      color: var(--text);
+      transition: all .15s;
+    }
+    .settings-btn:active { background: #f5f5f4; }
+    .settings-btn .s-icon { font-size: 22px; }
+    .settings-btn.danger { color: #ef4444; }
+    .settings-about {
+      text-align: center;
+      padding: 32px;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .api-key-row { display: flex; align-items: center; gap: 8px; }
+    .api-key-input {
+      flex: 1;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      font-size: 14px;
+      background: var(--card);
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+      font-family: 'SF Mono', monospace;
+    }
+    .api-key-input:focus { border-color: var(--coral); }
+    .api-key-input::placeholder { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; font-size: 13px; color: var(--text-muted); }
+    .api-key-save {
+      padding: 14px 22px;
+      background: var(--coral);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    .api-key-save:active { opacity: .8; }
+    .api-key-status {
+      font-size: 12px;
+      margin-top: 8px;
+      color: var(--text-muted);
+    }
+    .api-key-status.saved { color: var(--leaf); }
+    .settings-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-soft);
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    /* ====== Nav Bar ====== */
+    .nav-bar {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 40px);
+      max-width: 390px;
+      display: flex;
+      background: rgba(255,255,255,.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 6px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
+      z-index: 20;
+      border: 1px solid rgba(0,0,0,.04);
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 4px 8px;
+      border: none;
+      background: none;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 18px;
+      transition: all .2s ease;
+      gap: 4px;
+      letter-spacing: .1px;
+    }
+    .nav-item.active {
+      color: var(--coral);
+      background: var(--coral-light);
+    }
+    .nav-item .nav-icon { font-size: 20px; transition: transform .2s ease; }
+    .nav-item.active .nav-icon { transform: scale(1.1); }
+    .nav-item.recording .nav-icon { animation: pulse .8s ease-in-out infinite; }
+
+    /* ====== Dialog ====== */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+      backdrop-filter: blur(4px);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .overlay.show { display: flex; }
+    .dialog {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      max-width: 320px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,.12);
+      animation: fadeUp .25s ease;
+    }
+    .dialog-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .dialog-text { font-size: 14px; color: var(--text-soft); margin-bottom: 24px; line-height: 1.6; }
+    .dialog-buttons { display: flex; gap: 10px; }
+    .dialog-btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 30px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .dialog-btn:active { transform: scale(.96); }
+    .dialog-btn.cancel { background: #f5f5f4; color: var(--text); }
+    .dialog-btn.confirm { background: #ef4444; color: #fff; }
+    .dialog-btn.save { background: var(--coral); color: #fff; }
+
+    .edit-form { text-align: left; margin-bottom: 20px; }
+    .edit-form .form-row { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; }
+    .edit-form .form-row label { font-size: 13px; font-weight: 600; color: var(--text-soft); min-width: 40px; white-space: nowrap; }
+    .edit-form .form-row input {
+      flex: 1; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px;
+      font-size: 15px; background: var(--card); color: var(--text); outline: none;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      transition: border-color .15s;
+    }
+    .edit-form .form-row input:focus { border-color: var(--coral); }
+    .edit-form .form-row input[type="number"] {
+      max-width: 80px; text-align: center; font-variant-numeric: tabular-nums;
+    }
+    .edit-form .duration-row { display: flex; gap: 8px; align-items: center; }
+    .edit-form .duration-row span { font-size: 14px; color: var(--text-soft); font-weight: 500; }
+
+    /* ====== Responsive ====== */
+    @media (min-width: 431px) {
+      .app {
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+        box-shadow: 0 0 60px rgba(0,0,0,.03);
+      }
+      body { background: #edece9; }
+    }
+
+    ::-webkit-scrollbar { width: 0; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <div class="header">
+      <div>
+        <div class="header-greeting" id="headerGreeting">早上好</div>
+        <div class="header-date" id="headerDate"></div>
+      </div>
+      <div class="header-avatar">😊</div>
+    </div>
+
+    <!-- Timer Banner -->
+    <div class="timer-banner" id="timerBanner">
+      站立中 · <span class="timer-banner-time" id="timerBannerTime">00:00</span>
+    </div>
+
+    <!-- Pages -->
+    <div class="page active" id="page-record">
+      <div class="record-panel">
+        <div class="action-buttons">
+          <button class="action-btn btn-bathroom" id="btnBathroom" onclick="quickRecord('bathroom')">
+            <span class="icon">🚽</span>
+            <span class="label">上厕所</span>
+            <span class="sub">轻点记录</span>
+          </button>
+          <button class="action-btn btn-standing" id="btnStanding" onclick="toggleStanding()">
+            <span class="icon" id="standingIcon">🧍</span>
+            <span class="label" id="standingLabel">站一站</span>
+            <span class="timer-display" id="standingTimerDisplay" style="display:none">00:00</span>
+            <span class="sub" id="standingSub">计时开始</span>
+          </button>
+        </div>
+
+        <div class="section-title">今日概览</div>
+        <div class="summary-cards">
+          <div class="summary-card bathroom">
+            <div class="card-value" id="todayBathroomCount">0</div>
+            <div class="card-label">次厕所</div>
+          </div>
+          <div class="summary-card standing">
+            <div class="card-value" id="todayStandingCount">0</div>
+            <div class="card-label">次活动</div>
+          </div>
+        </div>
+        <div class="summary-card full">
+          <div class="card-value" id="todayStandingDuration">0 分钟</div>
+          <div class="card-label">活动总时长</div>
+        </div>
+
+        <div class="step-card" id="stepCard">
+          <div class="step-header">
+            <span class="step-title">👟 今日步数</span>
+            <span class="step-goal">目标 <span id="stepGoalDisplay">6000</span> 步</span>
+          </div>
+          <div class="step-value-row">
+            <span class="step-value" id="todaySteps">0</span>
+            <span class="step-unit">步</span>
+          </div>
+          <div class="step-progress">
+            <div class="step-progress-fill" id="stepProgressFill" style="width:0%"></div>
+          </div>
+          <div class="step-progress-label" id="stepProgressLabel">0%</div>
+          <div class="step-quick-btns">
+            <button class="step-quick-btn" onclick="addSteps(500)">+500</button>
+            <button class="step-quick-btn" onclick="addSteps(1000)">+1000</button>
+            <button class="step-quick-btn" onclick="addSteps(2000)">+2000</button>
+          </div>
+          <div class="step-custom-row">
+            <input class="step-custom-input" id="stepCustomInput" type="number" min="1" max="99999" placeholder="输入步数" inputmode="numeric">
+            <button class="step-custom-confirm" onclick="addCustomSteps()">确认</button>
+          </div>
+        </div>
+
+        <button class="ai-btn" id="aiBtn" onclick="analyzeWithAI()">
+          <span class="ai-spinner"></span>
+          <span class="ai-btn-text">✨ 智能分析</span>
+        </button>
+        <div class="ai-result" id="aiResult"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-dashboard">
+      <div class="section-title">本周趋势</div>
+      <div class="chart-card">
+        <canvas id="weeklyChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <canvas id="stepChart"></canvas>
+      </div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <div class="stat-value" id="statAvgBathroom">-</div>
+          <div class="stat-label">日均厕所</div>
+          <div class="stat-trend neutral" id="statTrendBathroom">-</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="statAvgStanding">-</div>
+          <div class="stat-label">日均活动</div>
+          <div class="stat-trend neutral" id="statTrendStanding">-</div>
+        </div>
+        <div class="stat-item step">
+          <div class="stat-value" id="statAvgSteps">-</div>
+          <div class="stat-label">日均步数</div>
+          <div class="stat-trend neutral" id="statTrendSteps">-</div>
+        </div>
+      </div>
+      <div class="section-title">今日时间线</div>
+      <div class="chart-card">
+        <div class="timeline" id="dailyTimeline">
+          <div class="empty-state">
+            <div class="empty-icon">☕</div>
+            <div class="empty-text">今天还没有记录</div>
+            <div class="empty-text" style="font-size:13px;color:var(--text-muted);margin-top:4px;">开始记录你的第一个活动吧</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-history">
+      <div id="historyList">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-text">暂无记录</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-settings">
+      <div class="settings-group">
+        <label class="settings-label">工作日设置</label>
+        <div style="font-size:13px;color:var(--text-soft);margin-bottom:12px;line-height:1.6;">
+          默认统计周一至周五。如有调休/节假日，可手动标记例外。
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input class="api-key-input" id="workdayInput" type="date" style="flex:1;">
+          <button class="api-key-save" onclick="addExtraWorkday()" style="background:var(--leaf);">标记为工作日</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input class="api-key-input" id="holidayInput" type="date" style="flex:1;">
+          <button class="api-key-save" onclick="addHoliday()" style="background:#f59e0b;">标记为节假日</button>
+        </div>
+        <div id="workdayExceptions" style="font-size:12px;color:var(--text-soft);line-height:1.8;"></div>
+      </div>
+      <div class="settings-group">
+        <label class="settings-label">数据同步（跨设备）</label>
+        <div style="font-size:13px;color:var(--text-soft);margin-bottom:12px;line-height:1.6;">
+          通过 GitHub Gist 同步数据。在电脑和手机上打开同一页面，数据自动保持一致。
+        </div>
+        <div class="api-key-row">
+          <input class="api-key-input" id="gistTokenInput" type="password" placeholder="GitHub Token" autocomplete="off">
+          <button class="api-key-save" onclick="saveGistToken()">保存</button>
+        </div>
+        <div class="api-key-status" id="gistTokenStatus"></div>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+          <button class="api-key-save" onclick="manualSync()" id="syncBtn" style="flex:1;text-align:center;">🔄 手动同步</button>
+          <button class="api-key-save" onclick="resetSync()" style="flex:1;text-align:center;background:#f59e0b;">🔁 重新初始化</button>
+        </div>
+        <div class="api-key-status" id="syncStatus" style="margin-top:4px;"></div>
+        <div id="syncDebug" style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.8;word-break:break-all;"></div>
+      </div>
+      <div class="settings-group">
+        <label class="settings-label">每日步数目标</label>
+        <div style="font-size:13px;color:var(--text-soft);margin-bottom:12px;line-height:1.6;">
+          设定每日步数目标，用于进度条和健康评估。
+        </div>
+        <div class="api-key-row">
+          <input class="api-key-input" id="stepGoalInput" type="number" min="1000" max="50000" step="500" placeholder="6000" inputmode="numeric" style="flex:1;">
+          <button class="api-key-save" onclick="saveStepGoal()" style="background:var(--teal);">保存</button>
+        </div>
+        <div class="api-key-status" id="stepGoalStatus"></div>
+      </div>
+      <div class="settings-group">
+        <label class="settings-label">智能分析设置</label>
+        <div class="api-key-row">
+          <input class="api-key-input" id="apiKeyInput" type="password" placeholder="DeepSeek API Key" autocomplete="off">
+          <button class="api-key-save" onclick="saveApiKey()">保存</button>
+        </div>
+        <div class="api-key-status" id="apiKeyStatus"></div>
+      </div>
+      <div class="settings-group">
+        <button class="settings-btn" onclick="exportData()">
+          <span class="s-icon">📥</span> 导出数据备份
+        </button>
+        <button class="settings-btn danger" onclick="showClearDialog()">
+          <span class="s-icon">🗑️</span> 清除所有数据
+        </button>
+      </div>
+      <div class="settings-about">
+        活力记 · 关注你的每一天<br>
+        数据本地存储 · 支持跨设备同步
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <div class="nav-bar">
+      <button class="nav-item active" data-page="record" onclick="switchPage('record')">
+        <span class="nav-icon">🏠</span> 首页
+      </button>
+      <button class="nav-item" data-page="dashboard" onclick="switchPage('dashboard')">
+        <span class="nav-icon">📊</span> 趋势
+      </button>
+      <button class="nav-item" data-page="history" onclick="switchPage('history')">
+        <span class="nav-icon">📋</span> 记录
+      </button>
+      <button class="nav-item" data-page="settings" onclick="switchPage('settings')">
+        <span class="nav-icon">⚙️</span> 设置
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Clear Confirm Dialog -->
+  <div class="overlay" id="clearOverlay">
+    <div class="dialog">
+      <div class="dialog-title">确认清除数据？</div>
+      <div class="dialog-text">所有记录将被删除且无法恢复。建议先导出备份。</div>
+      <div class="dialog-buttons">
+        <button class="dialog-btn cancel" onclick="hideClearDialog()">取消</button>
+        <button class="dialog-btn confirm" onclick="clearAllData()">确认清除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Dialog -->
+  <div class="overlay" id="editOverlay" onclick="if(event.target===this) hideEditDialog();">
+    <div class="dialog">
+      <div class="dialog-title">编辑记录</div>
+      <div class="edit-form">
+        <div class="form-row">
+          <label>日期</label>
+          <input type="date" id="editDate">
+        </div>
+        <div class="form-row">
+          <label>时间</label>
+          <input type="time" id="editTime">
+        </div>
+        <div class="form-row" id="editDurationRow" style="display:none;">
+          <label>时长</label>
+          <div class="duration-row">
+            <input type="number" id="editDurationMin" min="0" max="999" value="0" placeholder="0">
+            <span>分</span>
+            <input type="number" id="editDurationSec" min="0" max="59" value="0" placeholder="0">
+            <span>秒</span>
+          </div>
+        </div>
+        <div class="form-row" id="editStepsRow" style="display:none;">
+          <label>步数</label>
+          <input type="number" id="editSteps" min="1" max="99999" value="0" placeholder="输入步数" style="max-width:120px;text-align:center;">
+        </div>
+      </div>
+      <div class="dialog-buttons">
+        <button class="dialog-btn cancel" onclick="hideEditDialog()">取消</button>
+        <button class="dialog-btn save" onclick="saveEditRecord()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== DATA LAYER ====================
+    const STORAGE_KEY = 'health_tracker_records';
+
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+    }
+
+    function getRecords() {
+      // Return only non-deleted records for normal use
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]').filter(r => !r.deleted); }
+      catch { return []; }
+    }
+
+    function getAllRecordsRaw() {
+      // Return ALL records including deleted ones — for sync merging
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+      catch { return []; }
+    }
+
+    function saveRecords(records) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    }
+
+    function addRecord(record) {
+      const records = getAllRecordsRaw();
+      records.push(record);
+      saveRecords(records);
+      return record;
+    }
+
+    function deleteRecord(id) {
+      // Soft delete: mark as deleted instead of removing
+      const records = getAllRecordsRaw();
+      const record = records.find(r => r.id === id);
+      if (record) {
+        record.deleted = true;
+        record.deletedAt = Date.now();
+      }
+      saveRecords(records);
+    }
+
+    function getTodayRecords() {
+      const today = formatDate(new Date());
+      return getRecords().filter(r => r.date === today);
+    }
+
+    function getWeekRecords() {
+      const records = getRecords();
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      monday.setHours(0, 0, 0, 0);
+      return records.filter(r => new Date(r.timestamp) >= monday);
+    }
+
+    function getAllRecordsGrouped() {
+      const records = getRecords();
+      records.sort((a, b) => b.timestamp - a.timestamp);
+      const groups = {};
+      records.forEach(r => {
+        if (!groups[r.date]) groups[r.date] = [];
+        groups[r.date].push(r);
+      });
+      return groups;
+    }
+
+    // ==================== UTILS ====================
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatTime(ts) {
+      const d = new Date(ts);
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function formatDuration(seconds) {
+      if (seconds < 60) return `${seconds}秒`;
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return s > 0 ? `${m}分${s}秒` : `${m}分钟`;
+    }
+
+    function formatTimerDisplay(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function getWeekdayName(dateStr) {
+      const names = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      return names[new Date(dateStr).getDay()];
+    }
+
+    function getDateLabel(dateStr) {
+      const today = formatDate(new Date());
+      const yesterday = formatDate(new Date(Date.now() - 86400000));
+      if (dateStr === today) return '今天';
+      if (dateStr === yesterday) return '昨天';
+      return `${dateStr} ${getWeekdayName(dateStr)}`;
+    }
+
+    // ==================== GREETING ====================
+    function updateGreeting() {
+      const h = new Date().getHours();
+      const today = formatDate(new Date());
+      const g = document.getElementById('headerGreeting');
+      const isWeekend = !isWorkday(today);
+
+      let greeting;
+      if (h < 9) greeting = '早上好 ☀️';
+      else if (h < 12) greeting = '上午好';
+      else if (h < 14) greeting = '中午好';
+      else if (h < 18) greeting = '下午好 🌤️';
+      else greeting = '晚上好 🌙';
+
+      if (isWeekend) greeting += ' · 休息日';
+      g.textContent = greeting;
+    }
+
+    // ==================== TOAST ====================
+    let toastTimer;
+    function showToast(msg, type = '') {
+      const toast = document.getElementById('toast');
+      clearTimeout(toastTimer);
+      toast.textContent = msg;
+      toast.className = 'toast ' + type + ' show';
+      toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 1800);
+    }
+
+    // ==================== TIMER ====================
+    let standingTimer = null;
+    let standingStartTime = null;
+    let standingElapsed = 0;
+    let standingTimerInterval = null;
+
+    function toggleStanding() {
+      standingTimer ? stopStanding() : startStanding();
+    }
+
+    function startStanding() {
+      standingStartTime = Date.now();
+      standingElapsed = 0;
+      standingTimer = { startTime: standingStartTime };
+
+      const btn = document.getElementById('btnStanding');
+      btn.classList.add('timing');
+      document.getElementById('standingIcon').style.display = 'none';
+      document.getElementById('standingLabel').textContent = '进行中';
+      document.getElementById('standingSub').textContent = '轻点结束';
+      document.getElementById('standingTimerDisplay').style.display = 'block';
+
+      document.getElementById('timerBanner').classList.add('active');
+      document.querySelector('.nav-item[data-page="record"]').classList.add('recording');
+
+      standingTimerInterval = setInterval(updateTimerDisplay, 200);
+    }
+
+    function stopStanding() {
+      clearInterval(standingTimerInterval);
+      standingTimerInterval = null;
+
+      const duration = Math.round((Date.now() - standingStartTime) / 1000);
+      addRecord({
+        id: generateId(),
+        type: 'standing',
+        date: formatDate(new Date(standingStartTime)),
+        timestamp: standingStartTime,
+        duration: duration
+      });
+
+      standingTimer = null;
+      standingStartTime = null;
+      standingElapsed = 0;
+
+      const btn = document.getElementById('btnStanding');
+      btn.classList.remove('timing');
+      document.getElementById('standingIcon').style.display = '';
+      document.getElementById('standingLabel').textContent = '站一站';
+      document.getElementById('standingSub').textContent = '计时开始';
+      document.getElementById('standingTimerDisplay').style.display = 'none';
+
+      document.getElementById('timerBanner').classList.remove('active');
+      document.querySelector('.nav-item[data-page="record"]').classList.remove('recording');
+
+      showToast(`已记录 ${formatDuration(duration)}`, 'success');
+      refreshAll();
+    }
+
+    function updateTimerDisplay() {
+      standingElapsed = Math.round((Date.now() - standingStartTime) / 1000);
+      const d = formatTimerDisplay(standingElapsed);
+      document.getElementById('standingTimerDisplay').textContent = d;
+      document.getElementById('timerBannerTime').textContent = d;
+    }
+
+    function quickRecord(type) {
+      const now = Date.now();
+      const today = formatDate(new Date());
+      addRecord({ id: generateId(), type, date: today, timestamp: now });
+
+      if (type === 'bathroom' && !standingTimer) {
+        addRecord({ id: generateId(), type: 'standing', date: today, timestamp: now, duration: 180 });
+        showToast('已记录', 'success');
+      } else {
+        showToast('已记录', 'success');
+      }
+      refreshAll();
+    }
+
+    // ==================== STEPS ====================
+    function addSteps(count) {
+      const now = Date.now();
+      const today = formatDate(new Date());
+      addRecord({ id: generateId(), type: 'step', date: today, timestamp: now, steps: count });
+      showToast(`已记录 ${count} 步`, 'success');
+      refreshAll();
+    }
+
+    function addCustomSteps() {
+      const input = document.getElementById('stepCustomInput');
+      const count = parseInt(input.value);
+      if (!count || count <= 0) {
+        showToast('请输入有效步数', '');
+        return;
+      }
+      if (count > 99999) {
+        showToast('步数超出范围', '');
+        return;
+      }
+      addSteps(count);
+      input.value = '';
+    }
+
+    function getTodaySteps() {
+      const today = formatDate(new Date());
+      return getRecords()
+        .filter(r => r.type === 'step' && r.date === today)
+        .reduce((sum, r) => sum + (r.steps || 0), 0);
+    }
+
+    function renderStepCard() {
+      const total = getTodaySteps();
+      const goal = getStepsGoal();
+      const pct = Math.min(100, Math.round((total / goal) * 100));
+
+      document.getElementById('todaySteps').textContent = total.toLocaleString();
+      document.getElementById('stepGoalDisplay').textContent = goal.toLocaleString();
+      document.getElementById('stepProgressFill').style.width = pct + '%';
+      document.getElementById('stepProgressLabel').textContent = pct + '%';
+
+      // Color feedback
+      const fill = document.getElementById('stepProgressFill');
+      if (pct >= 100) {
+        fill.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)';
+      } else if (pct >= 50) {
+        fill.style.background = 'linear-gradient(90deg, #14b8a6, #0d9488)';
+      } else {
+        fill.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
+      }
+    }
+
+    // ==================== AI ANALYSIS ====================
+    const API_KEY_STORAGE = 'health_tracker_api_key';
+
+    function getApiKey() {
+      return localStorage.getItem(API_KEY_STORAGE) || '';
+    }
+
+    function saveApiKey() {
+      const input = document.getElementById('apiKeyInput');
+      const status = document.getElementById('apiKeyStatus');
+      const key = input.value.trim();
+      if (!key) {
+        status.textContent = '请输入 API Key';
+        status.className = 'api-key-status';
+        return;
+      }
+      localStorage.setItem(API_KEY_STORAGE, key);
+      status.textContent = '已保存';
+      status.className = 'api-key-status saved';
+      input.value = '';
+      setTimeout(() => { status.textContent = '已配置，可使用智能分析'; status.className = 'api-key-status saved'; }, 2000);
+    }
+
+    async function analyzeWithAI() {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        const d = document.getElementById('aiResult');
+        const recs = generateRecommendationsText();
+        d.className = 'ai-result show';
+        d.innerHTML = `<div class="ai-result-title">📋 今日数据摘要</div>${recs.length > 0 ? recs.join('<br>') : '今天还没有足够的数据用于分析。<br><br>💡 在设置中配置 API Key 即可获得 AI 智能分析。'}`;
+        return;
+      }
+
+      const btn = document.getElementById('aiBtn');
+      const resultDiv = document.getElementById('aiResult');
+      btn.disabled = true;
+      btn.classList.add('loading');
+      resultDiv.className = 'ai-result show';
+      resultDiv.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:16px;">正在分析你的数据...</div>';
+
+      try {
+        const today = formatDate(new Date());
+        const todayRecords = getRecords().filter(r => r.date === today);
+        const weekRecords = getWeekRecords();
+
+        const bathroomCount = todayRecords.filter(r => r.type === 'bathroom').length;
+        const standingRecords = todayRecords.filter(r => r.type === 'standing');
+        const standingCount = standingRecords.length;
+        const standingTotal = standingRecords.reduce((sum, r) => sum + (r.duration || 0), 0);
+        const standingMinutes = Math.round(standingTotal / 60);
+
+        const bathroomTimes = todayRecords.filter(r => r.type === 'bathroom').map(r => formatTime(r.timestamp)).join(', ') || '无';
+        const standingDetails = standingRecords.map(r => `${formatTime(r.timestamp)}（${formatDuration(r.duration || 0)}）`).join(', ') || '无';
+        const todaySteps = todayRecords.filter(r => r.type === 'step').reduce((sum, r) => sum + (r.steps || 0), 0);
+        const stepGoal = getStepsGoal();
+
+        const weekBathroomTotal = weekRecords.filter(r => r.type === 'bathroom').length;
+        const weekStandingTotal = weekRecords.filter(r => r.type === 'standing').reduce((sum, r) => sum + (r.duration || 0), 0);
+        const weekStandingDays = new Set(weekRecords.filter(r => r.type === 'standing').map(r => r.date)).size;
+        const weekStepsTotal = weekRecords.filter(r => r.type === 'step').reduce((sum, r) => sum + (r.steps || 0), 0);
+
+        const prompt = `今日数据：
+- 上厕所 ${bathroomCount} 次（${bathroomTimes}）
+- 站立活动 ${standingCount} 次，共 ${standingMinutes} 分钟（${standingDetails}）
+- 步数 ${todaySteps} 步（目标 ${stepGoal} 步）
+- 本周上厕所 ${weekBathroomTotal} 次，站立 ${Math.round(weekStandingTotal / 60)} 分钟，${weekStandingDays} 天有站立，累计 ${weekStepsTotal} 步
+
+你是一名健康管理专家，请根据我今日上厕所的次数、站立活动总时长、每日步数等维度，综合分析我今日的活动情况，并给出中肯、专业的建议。建议要对我有实际帮助，并适当结合网络上的健康热点话题，让分析结果更有吸引力。说话像和老朋友谈心一样自然温暖，表意清晰简练平实，不要分点罗列，直接精准地说重点就行。`;
+
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: '你是一名专业的健康管理专家，擅长解读身体活动数据，给出中肯、实用的建议。表达像和老朋友谈心一样自然温暖，清晰简练、直击要点，不啰嗦。' },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 800,
+            temperature: 0.7
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error?.message || `请求失败 (${response.status})`);
+        }
+
+        const data = await response.json();
+        const analysis = data.choices?.[0]?.message?.content || '暂无分析结果，请稍后再试。';
+
+        const recs = generateRecommendationsText();
+        const recsHtml = recs.length > 0 ? `<br><br><b>📋 数据摘要</b><br>${recs.map(r => r).join('<br>')}` : '';
+
+        resultDiv.className = 'ai-result show';
+        resultDiv.innerHTML = `<div class="ai-result-title">✨ 智能分析</div>${analysis.replace(/\n/g, '<br>')}${recsHtml}`;
+
+      } catch (err) {
+        const recs = generateRecommendationsText();
+        const recsHtml = recs.length > 0 ? `<br><br><b>📋 数据摘要</b><br>${recs.join('<br>')}` : '';
+        resultDiv.className = 'ai-result ai-error show';
+        resultDiv.innerHTML = `<div class="ai-result-title">AI 调用失败</div>${err.message}<br><br>以下是本地数据摘要：${recsHtml}`;
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
+    }
+
+    // ==================== GIST SYNC ====================
+    const GIST_TOKEN_KEY = 'health_tracker_gist_token';
+    const GIST_ID_KEY = 'health_tracker_gist_id';
+    const GIST_FILENAME = 'health-records.json';
+
+    function getGistToken() {
+      return localStorage.getItem(GIST_TOKEN_KEY) || '';
+    }
+
+    function getGistId() {
+      return localStorage.getItem(GIST_ID_KEY) || '';
+    }
+
+    function saveGistToken() {
+      const input = document.getElementById('gistTokenInput');
+      const status = document.getElementById('gistTokenStatus');
+      const token = input.value.trim();
+      if (!token) {
+        status.textContent = '请输入 GitHub Token';
+        status.className = 'api-key-status';
+        return;
+      }
+      if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+        status.textContent = 'Token 格式不正确，请检查';
+        status.className = 'api-key-status';
+        return;
+      }
+      localStorage.setItem(GIST_TOKEN_KEY, token);
+      status.textContent = '已保存，正在初始化同步...';
+      status.className = 'api-key-status saved';
+      input.value = '';
+      initGistSync().then((result) => {
+        status.textContent = '同步已就绪 ✓';
+        status.className = 'api-key-status saved';
+        if (result && result.pulled > 0) {
+          showToast(`从云端同步了 ${result.pulled} 条记录`, 'success');
+        }
+        refreshAll();
+      }).catch(err => {
+        status.textContent = '初始化失败: ' + err.message;
+        status.className = 'api-key-status';
+        showToast('同步失败: ' + err.message, '');
+      });
+    }
+
+    async function gistApi(path, token, method = 'GET', body = null) {
+      const opts = {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      };
+      if (body) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+      const resp = await fetch(`https://api.github.com${path}`, opts);
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.message || `HTTP ${resp.status}`);
+      }
+      return resp.json();
+    }
+
+    async function initGistSync() {
+      const token = getGistToken();
+      if (!token) return { pulled: 0 };
+
+      // Always search for the canonical Gist (the one with the most records)
+      const canonical = await findBestGist(token);
+
+      if (canonical) {
+        // Found canonical Gist — converge to it
+        const storedId = getGistId();
+        if (storedId !== canonical.id) {
+          localStorage.setItem(GIST_ID_KEY, canonical.id);
+        }
+        setSyncStatus('找到云端数据，正在合并...');
+        return await pullAndMerge();
+      }
+
+      // No canonical Gist exists yet. Check if we have a stored (orphaned) ID.
+      const storedId = getGistId();
+      if (storedId) {
+        try {
+          await gistApi(`/gists/${storedId}`, token);
+          return await pullAndMerge();
+        } catch {
+          localStorage.removeItem(GIST_ID_KEY);
+        }
+      }
+
+      // Nothing exists anywhere — create a fresh Gist with local data
+      const gist = await gistApi('/gists', token, 'POST', {
+        description: '活力记 - 健康数据同步',
+        public: false,
+        files: { [GIST_FILENAME]: { content: JSON.stringify(getRecords()) } }
+      });
+      localStorage.setItem(GIST_ID_KEY, gist.id);
+      setSyncStatus('同步已就绪 ✓');
+      return { pulled: 0 };
+    }
+
+    async function findBestGist(token) {
+      // Find the sync Gist with the most non-deleted records; use update time as tiebreaker
+      try {
+        const gists = await gistApi('/gists?per_page=100', token);
+        const candidates = gists.filter(g =>
+          g.description === '活力记 - 健康数据同步' &&
+          g.files && g.files[GIST_FILENAME]
+        );
+        if (candidates.length === 0) return null;
+
+        let best = null;
+        let bestCount = -1;
+        let bestTime = '';
+        for (const g of candidates) {
+          try {
+            const content = g.files[GIST_FILENAME].content;
+            const records = content ? JSON.parse(content) : [];
+            const count = records.filter(r => !r.deleted).length;
+            const updated = g.updated_at || '';
+            if (count > bestCount || (count === bestCount && updated > bestTime)) {
+              bestCount = count;
+              bestTime = updated;
+              best = g;
+            }
+          } catch {
+            // Skip gists with malformed content
+          }
+        }
+        return best;
+      } catch {
+        return null;
+      }
+    }
+
+    async function pullAndMerge() {
+      const token = getGistToken();
+      const gistId = getGistId();
+      if (!token || !gistId) return { pulled: 0 };
+
+      try {
+        const gist = await gistApi(`/gists/${gistId}`, token);
+        const remoteContent = gist.files?.[GIST_FILENAME]?.content;
+        if (!remoteContent) return { pulled: 0 };
+
+        const remoteRecords = JSON.parse(remoteContent);
+        const localRecords = getAllRecordsRaw();
+
+        // Merge by ID: if either side has deleted=true, the merged record is deleted
+        const localIds = new Set(localRecords.map(r => r.id));
+        const pulled = remoteRecords.filter(r => !localIds.has(r.id) && !r.deleted).length;
+
+        const merged = {};
+        [...remoteRecords, ...localRecords].forEach(r => {
+          if (merged[r.id]) {
+            // Conflict: if either side deleted it, keep it deleted
+            merged[r.id] = {
+              ...merged[r.id],
+              ...r,
+              deleted: merged[r.id].deleted || r.deleted,
+              deletedAt: merged[r.id].deletedAt || r.deletedAt
+            };
+          } else {
+            merged[r.id] = { ...r };
+          }
+        });
+        const mergedList = Object.values(merged);
+        mergedList.sort((a, b) => b.timestamp - a.timestamp);
+
+        saveRecords(mergedList);
+
+        // Push merged back if changed
+        const mergedJson = JSON.stringify(mergedList);
+        if (mergedJson !== remoteContent) {
+          await gistApi(`/gists/${gistId}`, token, 'PATCH', {
+            files: { [GIST_FILENAME]: { content: mergedJson } }
+          });
+        }
+
+        setSyncStatus(`上次同步: ${formatTime(Date.now())}`);
+        localStorage.setItem('health_tracker_last_sync', formatTime(Date.now()));
+        refreshAll();
+        showSyncDebug();
+        return { pulled };
+      } catch (err) {
+        setSyncStatus('同步失败: ' + err.message);
+        return { pulled: 0 };
+      }
+    }
+
+    async function pushToGist() {
+      const token = getGistToken();
+      const gistId = getGistId();
+      if (!token || !gistId) return;
+
+      try {
+        // Pull latest from Gist first, then merge with local, then push
+        const gist = await gistApi(`/gists/${gistId}`, token);
+        const remoteContent = gist.files?.[GIST_FILENAME]?.content;
+        if (!remoteContent) return;
+
+        const remoteRecords = JSON.parse(remoteContent);
+        const localRecords = getAllRecordsRaw();
+
+        const merged = {};
+        [...remoteRecords, ...localRecords].forEach(r => {
+          if (merged[r.id]) {
+            merged[r.id] = {
+              ...merged[r.id],
+              ...r,
+              deleted: merged[r.id].deleted || r.deleted,
+              deletedAt: merged[r.id].deletedAt || r.deletedAt
+            };
+          } else {
+            merged[r.id] = { ...r };
+          }
+        });
+        const mergedList = Object.values(merged);
+        mergedList.sort((a, b) => b.timestamp - a.timestamp);
+
+        // Only push if changed
+        const mergedJson = JSON.stringify(mergedList);
+        if (mergedJson !== remoteContent) {
+          saveRecords(mergedList);
+          await gistApi(`/gists/${gistId}`, token, 'PATCH', {
+            files: { [GIST_FILENAME]: { content: mergedJson } }
+          });
+        }
+
+        setSyncStatus(`上次同步: ${formatTime(Date.now())}`);
+        localStorage.setItem('health_tracker_last_sync', formatTime(Date.now()));
+        showSyncDebug();
+      } catch {
+        // Silently fail for background pushes
+      }
+    }
+
+    async function manualSync() {
+      const token = getGistToken();
+      if (!token) {
+        setSyncStatus('请先配置 GitHub Token');
+        return;
+      }
+      const btn = document.getElementById('syncBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ 同步中...';
+      setSyncStatus('正在同步...');
+      try {
+        const result = await pullAndMerge();
+        setSyncStatus(`同步完成 ✓ (${formatTime(Date.now())})`);
+        if (result.pulled > 0) {
+          showToast(`从云端同步了 ${result.pulled} 条记录`, 'success');
+        } else {
+          showToast('数据已是最新', 'success');
+        }
+      } catch (err) {
+        setSyncStatus('同步失败: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 手动同步';
+      }
+    }
+
+    function setSyncStatus(msg) {
+      const el = document.getElementById('syncStatus');
+      if (el) el.textContent = msg;
+    }
+
+    function showSyncDebug() {
+      const el = document.getElementById('syncDebug');
+      if (!el) return;
+      const gistId = getGistId();
+      const records = getRecords();
+      const raw = getAllRecordsRaw();
+      const deleted = raw.filter(r => r.deleted).length;
+      el.innerHTML = `
+        <b>诊断信息</b><br>
+        Gist ID: ${gistId || '未设置'}<br>
+        活跃记录: ${records.length} 条<br>
+        已删除: ${deleted} 条<br>
+        上次同步: ${localStorage.getItem('health_tracker_last_sync') || '无'}
+      `.trim();
+    }
+
+    async function resetSync() {
+      if (!confirm('将清除本地 Gist 缓存并重新搜索云端数据，确定要继续吗？')) return;
+      localStorage.removeItem(GIST_ID_KEY);
+      setSyncStatus('正在重新初始化...');
+      try {
+        await initGistSync();
+        showSyncDebug();
+        refreshAll();
+        showToast('同步已重新初始化', 'success');
+      } catch (err) {
+        setSyncStatus('重新初始化失败: ' + err.message);
+      }
+    }
+
+    // Debounced sync: waits 5 seconds after last change before pushing
+    let syncDebounceTimer = null;
+    function scheduleSync() {
+      clearTimeout(syncDebounceTimer);
+      syncDebounceTimer = setTimeout(() => {
+        pushToGist().catch(() => {});
+      }, 5000);
+    }
+
+    // Hook into addRecord to trigger debounced sync
+    const originalAddRecord = addRecord;
+    addRecord = function(record) {
+      const result = originalAddRecord(record);
+      scheduleSync();
+      return result;
+    };
+
+    // Hook into deleteRecord to trigger debounced sync
+    const originalDeleteRecord = deleteRecord;
+    deleteRecord = function(id) {
+      originalDeleteRecord(id);
+      scheduleSync();
+    };
+
+    // ==================== WORKDAY LOGIC ====================
+    const EXTRA_WORKDAYS_KEY = 'health_tracker_extra_workdays';
+    const HOLIDAYS_KEY = 'health_tracker_holidays';
+    const STEPS_GOAL_KEY = 'health_tracker_steps_goal';
+
+    function getStepsGoal() {
+      const v = parseInt(localStorage.getItem(STEPS_GOAL_KEY));
+      return v > 0 ? v : 6000;
+    }
+
+    function saveStepGoal() {
+      const input = document.getElementById('stepGoalInput');
+      const status = document.getElementById('stepGoalStatus');
+      const val = parseInt(input.value);
+      if (!val || val < 1000) {
+        status.textContent = '请输入至少 1000 步';
+        status.className = 'api-key-status';
+        return;
+      }
+      localStorage.setItem(STEPS_GOAL_KEY, val);
+      status.textContent = '已保存 ✓';
+      status.className = 'api-key-status saved';
+      input.value = '';
+      input.placeholder = val;
+      renderStepCard();
+      showToast('步数目标已更新', 'success');
+      setTimeout(() => { status.textContent = ''; }, 2000);
+    }
+
+    function getExtraWorkdays() {
+      try { return JSON.parse(localStorage.getItem(EXTRA_WORKDAYS_KEY) || '[]'); }
+      catch { return []; }
+    }
+
+    function getHolidays() {
+      try { return JSON.parse(localStorage.getItem(HOLIDAYS_KEY) || '[]'); }
+      catch { return []; }
+    }
+
+    function isWorkday(dateStr) {
+      const d = new Date(dateStr);
+      const day = d.getDay(); // 0=Sun, 6=Sat
+      const isWeekend = (day === 0 || day === 6);
+      const extraWorkdays = getExtraWorkdays();
+      const holidays = getHolidays();
+
+      if (holidays.includes(dateStr)) return false;
+      if (extraWorkdays.includes(dateStr)) return true;
+      return !isWeekend;
+    }
+
+    function addExtraWorkday() {
+      const input = document.getElementById('workdayInput');
+      const date = input.value;
+      if (!date) return;
+      const workdays = getExtraWorkdays();
+      if (!workdays.includes(date)) workdays.push(date);
+      localStorage.setItem(EXTRA_WORKDAYS_KEY, JSON.stringify(workdays));
+      // Also remove from holidays if present
+      const holidays = getHolidays().filter(d => d !== date);
+      localStorage.setItem(HOLIDAYS_KEY, JSON.stringify(holidays));
+      input.value = '';
+      renderWorkdayExceptions();
+      showToast('已标记为工作日', 'success');
+    }
+
+    function addHoliday() {
+      const input = document.getElementById('holidayInput');
+      const date = input.value;
+      if (!date) return;
+      const holidays = getHolidays();
+      if (!holidays.includes(date)) holidays.push(date);
+      localStorage.setItem(HOLIDAYS_KEY, JSON.stringify(holidays));
+      // Also remove from workdays if present
+      const workdays = getExtraWorkdays().filter(d => d !== date);
+      localStorage.setItem(EXTRA_WORKDAYS_KEY, JSON.stringify(workdays));
+      input.value = '';
+      renderWorkdayExceptions();
+      showToast('已标记为节假日', 'success');
+    }
+
+    function removeWorkdayException(date, type) {
+      if (type === 'workday') {
+        localStorage.setItem(EXTRA_WORKDAYS_KEY, JSON.stringify(getExtraWorkdays().filter(d => d !== date)));
+      } else {
+        localStorage.setItem(HOLIDAYS_KEY, JSON.stringify(getHolidays().filter(d => d !== date)));
+      }
+      renderWorkdayExceptions();
+      showToast('已移除标记', '');
+    }
+
+    function renderWorkdayExceptions() {
+      const container = document.getElementById('workdayExceptions');
+      const workdays = getExtraWorkdays();
+      const holidays = getHolidays();
+      let html = '';
+      if (workdays.length === 0 && holidays.length === 0) {
+        html = '<span style="color:var(--text-muted);">暂无例外标记</span>';
+      } else {
+        workdays.forEach(d => {
+          html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;"><span>🟢 ${d} · 工作日（周末调休）</span><span style="cursor:pointer;color:#ef4444;font-size:14px;" onclick="removeWorkdayException('${d}','workday')">✕</span></div>`;
+        });
+        holidays.forEach(d => {
+          html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;"><span>🔴 ${d} · 节假日</span><span style="cursor:pointer;color:#ef4444;font-size:14px;" onclick="removeWorkdayException('${d}','holiday')">✕</span></div>`;
+        });
+      }
+      container.innerHTML = html;
+    }
+
+    // ==================== RECOMMENDATIONS (moved to AI flow) ====================
+    function generateRecommendationsText() {
+      const today = formatDate(new Date());
+      const todayRecords = getRecords().filter(r => r.date === today);
+      const bathroomCount = todayRecords.filter(r => r.type === 'bathroom').length;
+      const standingRecords = todayRecords.filter(r => r.type === 'standing');
+      const standingTotal = standingRecords.reduce((sum, r) => sum + (r.duration || 0), 0);
+      const standingMinutes = Math.round(standingTotal / 60);
+      const todaySteps = todayRecords.filter(r => r.type === 'step').reduce((sum, r) => sum + (r.steps || 0), 0);
+      const stepGoal = getStepsGoal();
+      const now = new Date();
+      const hour = now.getHours();
+      const lines = [];
+
+      if (bathroomCount > 8) {
+        lines.push('💧 今天去厕所次数偏多，记得关注饮水节奏，不舒服的话可以咨询医生。');
+      } else if (bathroomCount < 3 && hour >= 14) {
+        lines.push('🥤 喝水有点少哦，记得每天喝够 1500-2000ml 水，对身体好。');
+      } else if (bathroomCount >= 4 && bathroomCount <= 8) {
+        lines.push('✅ 排尿频率正常，饮水习惯不错。');
+      }
+
+      if (standingMinutes > 60) {
+        lines.push(`🌟 今天活动了 ${standingMinutes} 分钟，非常棒！继续保持这个好习惯。`);
+      } else if (standingMinutes >= 30) {
+        lines.push(`👏 活动量达标（${standingMinutes}分钟），对身体很好哦。`);
+      } else if (standingMinutes > 0) {
+        lines.push(`💡 活动了 ${standingMinutes} 分钟，再努力一下，争取每天 30 分钟。`);
+      } else if (hour >= 11) {
+        lines.push('🪑 今天还没活动记录，起来走动一下吧，身体会感谢你的。');
+      }
+
+      // Step recommendations
+      if (todaySteps >= stepGoal) {
+        lines.push(`🎉 步数达标（${todaySteps.toLocaleString()}步），太厉害了！`);
+      } else if (todaySteps >= stepGoal * 0.5) {
+        const remaining = stepGoal - todaySteps;
+        lines.push(`👟 已走 ${todaySteps.toLocaleString()} 步，还差 ${remaining.toLocaleString()} 步达标，加油！`);
+      } else if (todaySteps > 0) {
+        lines.push(`🚶 步数偏少（${todaySteps.toLocaleString()}步），下班前多走走吧，目标 ${stepGoal.toLocaleString()} 步。`);
+      } else if (hour >= 14) {
+        lines.push(`🦶 今天还没记录步数，别忘了下班前输入哦。`);
+      }
+
+      if (standingRecords.length > 0) {
+        const lastStanding = standingRecords.reduce((max, r) => Math.max(max, r.timestamp), 0);
+        const minSince = Math.round((Date.now() - lastStanding) / 60000);
+        if (minSince > 120) {
+          lines.push(`⚠️ 已经连续坐了 ${Math.floor(minSince / 60)} 小时，赶紧起来活动活动！`);
+        }
+      } else if (hour >= 10) {
+        const workStart = new Date(); workStart.setHours(9, 0, 0, 0);
+        if (Math.round((Date.now() - workStart.getTime()) / 60000) > 120) {
+          lines.push('⚠️ 坐太久了，起来活动一下吧！');
+        }
+      }
+
+      const weekRecords = getWeekRecords().filter(r => isWorkday(r.date));
+      const standingDays = new Set(weekRecords.filter(r => r.type === 'standing').map(r => r.date)).size;
+      const todayDayOfWeek = new Date().getDay();
+      const daysInWeek = todayDayOfWeek === 0 ? 7 : todayDayOfWeek;
+      if (standingDays < 3 && daysInWeek >= 4) {
+        lines.push(`📅 这周只有 ${standingDays} 个工作日有活动，每天坚持一点点，慢慢就成习惯了。`);
+      }
+
+      return lines;
+    }
+
+    // ==================== TODAY SUMMARY ====================
+    function renderTodaySummary() {
+      const today = formatDate(new Date());
+      const todayRecords = getRecords().filter(r => r.date === today);
+      const bathroomCount = todayRecords.filter(r => r.type === 'bathroom').length;
+      const standingRecords = todayRecords.filter(r => r.type === 'standing');
+      const standingCount = standingRecords.length;
+      const standingTotal = standingRecords.reduce((sum, r) => sum + (r.duration || 0), 0);
+
+      document.getElementById('todayBathroomCount').textContent = bathroomCount;
+      document.getElementById('todayStandingCount').textContent = standingCount;
+      document.getElementById('todayStandingDuration').textContent = standingTotal > 0 ? formatDuration(standingTotal) : '0 分钟';
+      renderStepCard();
+    }
+
+    // ==================== DASHBOARD ====================
+    let weeklyChartInstance = null;
+
+    function renderDashboard() {
+      renderWeeklyChart();
+      renderWeeklyStats();
+      renderDailyTimeline();
+    }
+
+    function renderWeeklyChart() {
+      const ctx = document.getElementById('weeklyChart').getContext('2d');
+      if (weeklyChartInstance) weeklyChartInstance.destroy();
+
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      monday.setHours(0, 0, 0, 0);
+
+      const weekRecords = getWeekRecords().filter(r => isWorkday(r.date));
+      const labels = [], bathroomData = [], standingData = [], stepData = [];
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday); d.setDate(monday.getDate() + i);
+        const dateStr = formatDate(d);
+        const dayRecords = weekRecords.filter(r => r.date === dateStr);
+        labels.push(getWeekdayName(dateStr).replace('周', ''));
+        bathroomData.push(dayRecords.filter(r => r.type === 'bathroom').length);
+        standingData.push(Math.round(dayRecords.filter(r => r.type === 'standing').reduce((sum, r) => sum + (r.duration || 0), 0) / 60));
+        stepData.push(dayRecords.filter(r => r.type === 'step').reduce((sum, r) => sum + (r.steps || 0), 0));
+      }
+
+      weeklyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: '厕所', data: bathroomData, backgroundColor: '#fcd34d', borderRadius: 8, order: 2, yAxisID: 'y' },
+            { label: '活动', data: standingData, backgroundColor: '#fdba74', borderRadius: 8, order: 2, yAxisID: 'y1' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 24, font: { size: 12 }, color: '#78716c' } }
+          },
+          scales: {
+            y: { type: 'linear', position: 'left', title: { display: true, text: '次', font: { size: 11 }, color: '#a8a29e' }, beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 }, color: '#a8a29e' }, grid: { color: '#f5f5f4' } },
+            y1: { type: 'linear', position: 'right', title: { display: true, text: '分钟', font: { size: 11 }, color: '#a8a29e' }, beginAtZero: true, ticks: { font: { size: 11 }, color: '#a8a29e' }, grid: { drawOnChartArea: false } },
+            x: { ticks: { font: { size: 11 }, color: '#a8a29e' }, grid: { display: false } }
+          }
+        }
+      });
+
+      renderStepChart(labels, stepData);
+    }
+
+    let stepChartInstance = null;
+
+    function renderStepChart(labels, stepData) {
+      const ctx = document.getElementById('stepChart').getContext('2d');
+      if (stepChartInstance) stepChartInstance.destroy();
+
+      const goal = getStepsGoal();
+      const goalData = labels.map(() => goal);
+
+      stepChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: '步数', data: stepData, backgroundColor: '#5eead4', borderRadius: 8, order: 1 },
+            { label: '目标', data: goalData, type: 'line', borderColor: '#0d9488', backgroundColor: 'transparent', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 0 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 24, font: { size: 12 }, color: '#78716c' } }
+          },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: '步', font: { size: 11 }, color: '#a8a29e' }, ticks: { font: { size: 11 }, color: '#a8a29e' }, grid: { color: '#f5f5f4' } },
+            x: { ticks: { font: { size: 11 }, color: '#a8a29e' }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function renderWeeklyStats() {
+      const weekRecords = getWeekRecords().filter(r => isWorkday(r.date));
+      const dayOfWeek = new Date().getDay();
+      const daysSoFar = dayOfWeek === 0 ? 7 : dayOfWeek;
+
+      const weekBathroom = weekRecords.filter(r => r.type === 'bathroom').length;
+      const weekStandingTotal = weekRecords.filter(r => r.type === 'standing').reduce((sum, r) => sum + (r.duration || 0), 0);
+      const weekStepsTotal = weekRecords.filter(r => r.type === 'step').reduce((sum, r) => sum + (r.steps || 0), 0);
+
+      document.getElementById('statAvgBathroom').textContent = (weekBathroom / Math.max(daysSoFar, 1)).toFixed(1) + '次';
+      document.getElementById('statAvgStanding').textContent = Math.round(weekStandingTotal / Math.max(daysSoFar, 1) / 60) + '分钟';
+      document.getElementById('statAvgSteps').textContent = Math.round(weekStepsTotal / Math.max(daysSoFar, 1)).toLocaleString() + '步';
+
+      const thisMonday = new Date();
+      thisMonday.setDate(thisMonday.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      thisMonday.setHours(0, 0, 0, 0);
+      const lastMonday = new Date(thisMonday); lastMonday.setDate(thisMonday.getDate() - 7);
+
+      const lastWeekRecords = getRecords().filter(r => new Date(r.timestamp) >= lastMonday && new Date(r.timestamp) < thisMonday);
+      const trendB = document.getElementById('statTrendBathroom');
+      const trendS = document.getElementById('statTrendStanding');
+      const trendStep = document.getElementById('statTrendSteps');
+
+      if (lastWeekRecords.length === 0) {
+        trendB.textContent = '暂无上周数据'; trendB.className = 'stat-trend neutral';
+        trendS.textContent = '暂无上周数据'; trendS.className = 'stat-trend neutral';
+        trendStep.textContent = '暂无上周数据'; trendStep.className = 'stat-trend neutral';
+      } else {
+        const lastAvgB = lastWeekRecords.filter(r => r.type === 'bathroom').length / 7;
+        const lastAvgS = lastWeekRecords.filter(r => r.type === 'standing').reduce((sum, r) => sum + (r.duration || 0), 0) / 7 / 60;
+        const lastAvgStep = lastWeekRecords.filter(r => r.type === 'step').reduce((sum, r) => sum + (r.steps || 0), 0) / 7;
+        const diffB = parseFloat(document.getElementById('statAvgBathroom').textContent) - lastAvgB;
+        const diffS = parseInt(document.getElementById('statAvgStanding').textContent) - lastAvgS;
+        const curSteps = parseInt(document.getElementById('statAvgSteps').textContent.replace(/,/g, ''));
+        const diffStep = curSteps - lastAvgStep;
+
+        if (Math.abs(diffB) < 0.3) { trendB.textContent = '与上周持平'; trendB.className = 'stat-trend neutral'; }
+        else if (diffB > 0) { trendB.textContent = `↑ +${diffB.toFixed(1)}`; trendB.className = 'stat-trend up'; }
+        else { trendB.textContent = `↓ ${diffB.toFixed(1)}`; trendB.className = 'stat-trend down'; }
+
+        if (Math.abs(diffS) < 2) { trendS.textContent = '与上周持平'; trendS.className = 'stat-trend neutral'; }
+        else if (diffS > 0) { trendS.textContent = `↑ +${Math.round(diffS)}分钟`; trendS.className = 'stat-trend up'; }
+        else { trendS.textContent = `↓ ${Math.round(Math.abs(diffS))}分钟`; trendS.className = 'stat-trend down'; }
+
+        if (Math.abs(diffStep) < 200) { trendStep.textContent = '与上周持平'; trendStep.className = 'stat-trend neutral'; }
+        else if (diffStep > 0) { trendStep.textContent = `↑ +${Math.round(diffStep).toLocaleString()}步`; trendStep.className = 'stat-trend up'; }
+        else { trendStep.textContent = `↓ ${Math.round(Math.abs(diffStep)).toLocaleString()}步`; trendStep.className = 'stat-trend down'; }
+      }
+    }
+
+    function renderDailyTimeline() {
+      const container = document.getElementById('dailyTimeline');
+      const todayRecords = getTodayRecords();
+      todayRecords.sort((a, b) => a.timestamp - b.timestamp);
+
+      if (todayRecords.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">☕</div><div class="empty-text">今天还没有记录</div><div class="empty-text" style="font-size:13px;color:var(--text-muted);margin-top:4px;">开始记录你的第一个活动吧</div></div>';
+        return;
+      }
+
+      container.innerHTML = todayRecords.map(r => {
+        let icon, label, extra;
+        if (r.type === 'bathroom') {
+          icon = '🚽'; label = '上厕所'; extra = '';
+        } else if (r.type === 'standing') {
+          icon = '🧍'; label = '站一站'; extra = r.duration ? formatDuration(r.duration) : '';
+        } else {
+          icon = '👟'; label = '步数'; extra = (r.steps || 0).toLocaleString() + '步';
+        }
+        return `<div class="timeline-item ${r.type}"><span class="timeline-time">${formatTime(r.timestamp)}</span><span>${icon}</span><span class="timeline-label">${label}</span>${extra ? `<span class="timeline-duration">${extra}</span>` : ''}</div>`;
+      }).join('');
+    }
+
+    // ==================== HISTORY ====================
+    function renderHistory() {
+      const container = document.getElementById('historyList');
+      const groups = getAllRecordsGrouped();
+      const dates = Object.keys(groups);
+
+      if (dates.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">暂无记录</div></div>';
+        return;
+      }
+
+      container.innerHTML = dates.map(date => {
+        const records = groups[date];
+        const bathroomCount = records.filter(r => r.type === 'bathroom').length;
+        const standingCount = records.filter(r => r.type === 'standing').length;
+        const standingTotal = records.filter(r => r.type === 'standing').reduce((sum, r) => sum + (r.duration || 0), 0);
+        const stepTotal = records.filter(r => r.type === 'step').reduce((sum, r) => sum + (r.steps || 0), 0);
+        let summary = [];
+        if (bathroomCount > 0) summary.push(`🚽 ${bathroomCount}次`);
+        if (standingCount > 0) summary.push(`🧍 ${standingCount}次 ${formatDuration(standingTotal)}`);
+        if (stepTotal > 0) summary.push(`👟 ${stepTotal.toLocaleString()}步`);
+
+        return `<div class="history-date-group"><div class="history-date-header">${getDateLabel(date)} · ${summary.join(' · ') || '无记录'}</div>${records.map(r => {
+          let icon, typeName, extra;
+          if (r.type === 'bathroom') {
+            icon = '🚽'; typeName = '上厕所'; extra = '';
+          } else if (r.type === 'standing') {
+            icon = '🧍'; typeName = '站一站'; extra = r.duration ? formatDuration(r.duration) : '';
+          } else {
+            icon = '👟'; typeName = '步数'; extra = (r.steps || 0).toLocaleString() + '步';
+          }
+          return `<div class="history-item"><div class="hi-icon ${r.type}">${icon}</div><div class="hi-info"><div class="hi-type">${typeName}</div><div class="hi-time">${formatTime(r.timestamp)}</div></div>${extra ? `<div class="hi-duration">${extra}</div>` : ''}<button class="hi-edit" onclick="showEditDialog('${r.id}')" title="编辑">✎</button><button class="hi-delete" onclick="deleteHistoryItem('${r.id}')">✕</button></div>`;
+        }).join('')}</div>`;
+      }).join('');
+    }
+
+    function deleteHistoryItem(id) { deleteRecord(id); refreshAll(); showToast('已删除', ''); }
+
+    // ==================== EDIT RECORD ====================
+    let editingRecordId = null;
+
+    function showEditDialog(id) {
+      const records = getRecords();
+      const record = records.find(r => r.id === id);
+      if (!record) return;
+
+      editingRecordId = id;
+
+      const d = new Date(record.timestamp);
+      document.getElementById('editDate').value = formatDate(d);
+      document.getElementById('editTime').value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+      if (record.type === 'standing') {
+        document.getElementById('editDurationRow').style.display = '';
+        document.getElementById('editStepsRow').style.display = 'none';
+        const dur = record.duration || 0;
+        document.getElementById('editDurationMin').value = Math.floor(dur / 60);
+        document.getElementById('editDurationSec').value = dur % 60;
+      } else if (record.type === 'step') {
+        document.getElementById('editDurationRow').style.display = 'none';
+        document.getElementById('editStepsRow').style.display = '';
+        document.getElementById('editSteps').value = record.steps || 0;
+      } else {
+        document.getElementById('editDurationRow').style.display = 'none';
+        document.getElementById('editStepsRow').style.display = 'none';
+        document.getElementById('editDurationMin').value = 0;
+        document.getElementById('editDurationSec').value = 0;
+      }
+
+      document.getElementById('editOverlay').classList.add('show');
+    }
+
+    function hideEditDialog() {
+      document.getElementById('editOverlay').classList.remove('show');
+      editingRecordId = null;
+    }
+
+    function saveEditRecord() {
+      if (!editingRecordId) return;
+
+      const records = getRecords();
+      const record = records.find(r => r.id === editingRecordId);
+      if (!record) return;
+
+      const dateStr = document.getElementById('editDate').value;
+      const timeStr = document.getElementById('editTime').value;
+
+      if (!dateStr || !timeStr) { showToast('请填写完整的日期和时间', ''); return; }
+
+      const newTimestamp = new Date(`${dateStr}T${timeStr}:00`).getTime();
+      record.date = dateStr;
+      record.timestamp = newTimestamp;
+
+      if (record.type === 'standing') {
+        const min = parseInt(document.getElementById('editDurationMin').value) || 0;
+        const sec = parseInt(document.getElementById('editDurationSec').value) || 0;
+        record.duration = min * 60 + sec;
+      } else if (record.type === 'step') {
+        const steps = parseInt(document.getElementById('editSteps').value) || 0;
+        if (steps <= 0) { showToast('请输入有效步数', ''); return; }
+        record.steps = steps;
+      }
+
+      saveRecords(records);
+      hideEditDialog();
+      refreshAll();
+      scheduleSync();
+      showToast('记录已更新', 'success');
+    }
+
+    // ==================== SETTINGS ====================
+    function exportData() {
+      const blob = new Blob([JSON.stringify(getRecords(), null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `health-records-${formatDate(new Date())}.json`; a.click();
+      URL.revokeObjectURL(url);
+      showToast('数据已导出', 'success');
+    }
+
+    function showClearDialog() { document.getElementById('clearOverlay').classList.add('show'); }
+    function hideClearDialog() { document.getElementById('clearOverlay').classList.remove('show'); }
+    async function clearAllData() {
+      saveRecords([]);
+      hideClearDialog();
+      showToast('数据已清除', '');
+      refreshAll();
+      // Directly clear the Gist content (skip merge to avoid restoring deleted data)
+      const token = getGistToken();
+      const gistId = getGistId();
+      if (token && gistId) {
+        try {
+          await gistApi(`/gists/${gistId}`, token, 'PATCH', {
+            files: { [GIST_FILENAME]: { content: '[]' } }
+          });
+        } catch {}
+      }
+    }
+
+    // ==================== PAGE NAVIGATION ====================
+    function switchPage(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('page-' + page).classList.add('active');
+      document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+      if (page === 'dashboard') renderDashboard();
+      if (page === 'history') renderHistory();
+      if (page === 'settings') showSyncDebug();
+    }
+
+    // ==================== REFRESH ====================
+    function refreshAll() {
+      renderTodaySummary();
+      const activePage = document.querySelector('.page.active');
+      if (activePage) {
+        if (activePage.id === 'page-dashboard') renderDashboard();
+        if (activePage.id === 'page-history') renderHistory();
+      }
+    }
+
+    // ==================== INIT ====================
+    function init() {
+      updateGreeting();
+      document.getElementById('headerDate').textContent = `${formatDate(new Date())} ${getWeekdayName(formatDate(new Date()))}`;
+
+      const savedKey = getApiKey();
+      if (savedKey) {
+        document.getElementById('apiKeyStatus').textContent = '已配置，可使用智能分析';
+        document.getElementById('apiKeyStatus').className = 'api-key-status saved';
+      }
+
+      const savedToken = getGistToken();
+      if (savedToken) {
+        document.getElementById('gistTokenStatus').textContent = '已配置，正在同步...';
+        document.getElementById('gistTokenStatus').className = 'api-key-status saved';
+        initGistSync().then(() => {
+          showSyncDebug();
+        }).catch(() => {});
+      }
+
+      // Load step goal into input placeholder
+      const savedGoal = getStepsGoal();
+      document.getElementById('stepGoalInput').placeholder = savedGoal;
+      document.getElementById('stepGoalDisplay').textContent = savedGoal.toLocaleString();
+
+      // Enter key binding for step custom input
+      document.getElementById('stepCustomInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') addCustomSteps();
+      });
+
+      renderTodaySummary();
+      renderWorkdayExceptions();
+      showSyncDebug();
+
+      // Periodic sync: pull-merge-push every 2 minutes (safety net)
+      setInterval(() => {
+        if (getGistToken() && getGistId()) {
+          pullAndMerge().catch(() => {});
+        }
+        refreshAll();
+      }, 120000);
+    }
+
+    init();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "活力记 - 上班健康监测",
+  "short_name": "活力记",
+  "description": "记录每日上厕所、站立活动、步数，关注你的每一天",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#faf9f7",
+  "theme_color": "#f97316",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
