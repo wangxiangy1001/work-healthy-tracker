@@ -935,6 +935,10 @@
         <button class="settings-btn" onclick="exportData()">
           <span class="s-icon">📥</span> 导出数据备份
         </button>
+        <button class="settings-btn" onclick="document.getElementById('importFileInput').click()">
+          <span class="s-icon">📤</span> 导入数据备份
+        </button>
+        <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(event)">
         <button class="settings-btn danger" onclick="showClearDialog()">
           <span class="s-icon">🗑️</span> 清除所有数据
         </button>
@@ -2186,6 +2190,38 @@
       a.href = url; a.download = `health-records-${formatDate(new Date())}.json`; a.click();
       URL.revokeObjectURL(url);
       showToast('数据已导出', 'success');
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!Array.isArray(imported)) throw new Error('格式错误');
+          // Merge: imported records take priority, keep local if not conflicting
+          const existing = getAllRecordsRaw();
+          const existingIds = new Set(existing.map(r => r.id));
+          const merged = [...existing];
+          let added = 0;
+          imported.forEach(r => {
+            if (!existingIds.has(r.id)) {
+              merged.push(r);
+              added++;
+            }
+          });
+          merged.sort((a, b) => b.timestamp - a.timestamp);
+          saveRecords(merged);
+          scheduleSync();
+          refreshAll();
+          showToast(`已导入 ${added} 条新记录`, 'success');
+        } catch (err) {
+          showToast('文件格式错误，无法导入', '');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
     }
 
     function showClearDialog() { document.getElementById('clearOverlay').classList.add('show'); }
