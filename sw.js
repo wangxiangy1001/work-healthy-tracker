@@ -1,4 +1,4 @@
-const CACHE_NAME = 'health-tracker-v1';
+const CACHE_NAME = 'health-tracker-v2';
 
 // Files to cache on install
 const PRE_CACHE = [
