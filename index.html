@@ -922,7 +922,8 @@
       <div class="settings-group">
         <label class="settings-label">数据同步（跨设备）</label>
         <div style="font-size:13px;color:var(--text-soft);margin-bottom:12px;line-height:1.6;">
-          通过 GitHub Gist 同步数据。在电脑和手机上打开同一页面，数据自动保持一致。
+          通过 GitHub Gist 同步数据。<b>每个设备都需要配置同一个 Token</b>，数据才能自动保持一致。<br>
+          <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--coral);">→ 获取 GitHub Token</a>（选 <b>classic</b> 令牌，勾选 <b>gist</b> 权限，有效期选"永不过期"）
         </div>
         <div class="api-key-row">
           <input class="api-key-input" id="gistTokenInput" type="password" placeholder="GitHub Token" autocomplete="off">
@@ -1044,7 +1045,7 @@
     const STORAGE_KEY = 'health_tracker_records';
 
     function generateId() {
-      return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+      return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
     }
 
     function getRecords() {
@@ -1437,7 +1438,7 @@
         return;
       }
       if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
-        status.textContent = 'Token 格式不正确，请检查';
+        status.textContent = 'Token 格式不正确，请检查（需以 ghp_ 或 github_pat_ 开头）';
         status.className = 'api-key-status';
         return;
       }
@@ -1445,17 +1446,22 @@
       status.textContent = '已保存，正在初始化同步...';
       status.className = 'api-key-status saved';
       input.value = '';
+      updateSyncStatusBar('正在初始化同步...', 'syncing');
       initGistSync().then((result) => {
         status.textContent = '同步已就绪 ✓';
         status.className = 'api-key-status saved';
+        updateSyncStatusBar('已同步', 'synced');
         if (result && result.pulled > 0) {
           showToast(`从云端同步了 ${result.pulled} 条记录`, 'success');
         }
         refreshAll();
+        showSyncDebug();
       }).catch(err => {
-        status.textContent = '初始化失败: ' + err.message;
+        status.textContent = '初始化失败: ' + (err.message || '未知错误');
         status.className = 'api-key-status';
-        showToast('同步失败: ' + err.message, '');
+        updateSyncStatusBar('同步失败: ' + (err.message || '未知错误'), 'error');
+        showToast('同步初始化失败，请检查 Token 是否有效', '');
+        showSyncDebug();
       });
     }
 
@@ -1474,7 +1480,12 @@
       const resp = await fetch(`https://api.github.com${path}`, opts);
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        throw new Error(err.message || `HTTP ${resp.status}`);
+        let msg = err.message || `HTTP ${resp.status}`;
+        if (resp.status === 401) msg = 'Token 无效或已过期，请重新生成 GitHub Token';
+        else if (resp.status === 403 && msg.includes('rate limit')) msg = 'API 频率限制，请稍后再试';
+        else if (resp.status === 404) msg = 'Gist 不存在，将被重新创建';
+        else if (resp.status === 403) msg = 'Token 权限不足，请确认已勾选 gist 读写权限';
+        throw new Error(msg);
       }
       return resp.json();
     }
@@ -1519,7 +1530,8 @@
     }
 
     async function findBestGist(token) {
-      // Find the sync Gist with the most non-deleted records; use update time as tiebreaker
+      // Find the sync Gist with the most non-deleted records.
+      // Fetches full content via raw_url because the list API may truncate content.
       try {
         const gists = await gistApi('/gists?per_page=100', token);
         const candidates = gists.filter(g =>
@@ -1528,22 +1540,35 @@
         );
         if (candidates.length === 0) return null;
 
+        // Only one candidate — no need to compare counts
+        if (candidates.length === 1) return candidates[0];
+
+        // Multiple candidates: fetch full content in parallel, pick the one with most records
+        const results = await Promise.all(candidates.map(async (g) => {
+          try {
+            const rawUrl = g.files[GIST_FILENAME].raw_url;
+            const resp = await fetch(rawUrl, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!resp.ok) return null;
+            const text = await resp.text();
+            const records = JSON.parse(text);
+            const count = records.filter(r => !r.deleted).length;
+            return { g, count, updated: g.updated_at || '' };
+          } catch {
+            return null;
+          }
+        }));
+
         let best = null;
         let bestCount = -1;
         let bestTime = '';
-        for (const g of candidates) {
-          try {
-            const content = g.files[GIST_FILENAME].content;
-            const records = content ? JSON.parse(content) : [];
-            const count = records.filter(r => !r.deleted).length;
-            const updated = g.updated_at || '';
-            if (count > bestCount || (count === bestCount && updated > bestTime)) {
-              bestCount = count;
-              bestTime = updated;
-              best = g;
-            }
-          } catch {
-            // Skip gists with malformed content
+        for (const r of results) {
+          if (!r) continue;
+          if (r.count > bestCount || (r.count === bestCount && r.updated > bestTime)) {
+            bestCount = r.count;
+            bestTime = r.updated;
+            best = r.g;
           }
         }
         return best;
@@ -1586,24 +1611,28 @@
         const mergedList = Object.values(merged);
         mergedList.sort((a, b) => b.timestamp - a.timestamp);
 
-        saveRecords(mergedList);
-
-        // Push merged back if changed
+        // Push merged back if changed — push FIRST, then save locally
         const mergedJson = JSON.stringify(mergedList);
         if (mergedJson !== remoteContent) {
           await gistApi(`/gists/${gistId}`, token, 'PATCH', {
             files: { [GIST_FILENAME]: { content: mergedJson } }
           });
         }
+        saveRecords(mergedList);
 
-        setSyncStatus(`上次同步: ${formatTime(Date.now())}`);
-        localStorage.setItem('health_tracker_last_sync', formatTime(Date.now()));
+        const now = formatTime(Date.now());
+        setSyncStatus(`上次同步: ${now}`);
+        localStorage.setItem('health_tracker_last_sync', now);
+        updateSyncStatusBar(`已同步 · ${now}`, 'synced');
         refreshAll();
         showSyncDebug();
         return { pulled };
       } catch (err) {
-        setSyncStatus('同步失败: ' + err.message);
-        return { pulled: 0 };
+        console.error('pullAndMerge 失败:', err);
+        setSyncStatus('同步失败: ' + (err.message || '未知错误'));
+        updateSyncStatusBar('同步失败 · 点击重试', 'error');
+        showSyncDebug();
+        throw err; // Re-throw so callers can handle it
       }
     }
 
@@ -1637,20 +1666,25 @@
         const mergedList = Object.values(merged);
         mergedList.sort((a, b) => b.timestamp - a.timestamp);
 
-        // Only push if changed
+        // Only push if changed — push FIRST, then save locally.
         const mergedJson = JSON.stringify(mergedList);
         if (mergedJson !== remoteContent) {
-          saveRecords(mergedList);
           await gistApi(`/gists/${gistId}`, token, 'PATCH', {
             files: { [GIST_FILENAME]: { content: mergedJson } }
           });
         }
+        saveRecords(mergedList);
 
-        setSyncStatus(`上次同步: ${formatTime(Date.now())}`);
-        localStorage.setItem('health_tracker_last_sync', formatTime(Date.now()));
+        const now = formatTime(Date.now());
+        setSyncStatus(`上次同步: ${now}`);
+        localStorage.setItem('health_tracker_last_sync', now);
+        updateSyncStatusBar(`已同步 · ${now}`, 'synced');
         showSyncDebug();
-      } catch {
-        // Silently fail for background pushes
+      } catch (err) {
+        console.error('pushToGist 失败:', err);
+        updateSyncStatusBar('同步失败 · 将自动重试', 'error');
+        setSyncStatus('后台同步失败: ' + (err.message || '未知错误'));
+        showSyncDebug();
       }
     }
 
@@ -1667,17 +1701,17 @@
       setSyncStatus('正在同步...');
       updateSyncStatusBar('同步中...', 'syncing');
       try {
-        const result = await pullAndMerge();
-        setSyncStatus(`同步完成 ✓ (${formatTime(Date.now())})`);
-        updateSyncStatusBar('已同步', 'synced');
-        if (result.pulled > 0) {
-          showToast(`从云端同步了 ${result.pulled} 条记录`, 'success');
-        } else {
-          showToast('数据已是最新', 'success');
-        }
+        // Use pushToGist which does pull-merge-push (bidirectional sync)
+        await pushToGist();
+        const now = formatTime(Date.now());
+        setSyncStatus(`同步完成 ✓ (${now})`);
+        updateSyncStatusBar(`已同步 · ${now}`, 'synced');
+        showToast('同步完成', 'success');
+        refreshAll();
       } catch (err) {
-        setSyncStatus('同步失败: ' + err.message);
+        setSyncStatus('同步失败: ' + (err.message || '未知错误'));
         updateSyncStatusBar('同步失败', 'error');
+        showToast('同步失败: ' + (err.message || '未知错误'), '');
       } finally {
         btn.disabled = false;
         btn.textContent = '🔄 手动同步';
@@ -1687,21 +1721,25 @@
     async function syncFromHome() {
       const token = getGistToken();
       if (!token) {
-        showToast('请先在设置页配置 GitHub Token', '');
+        showToast('请先在设置页配置 GitHub 同步 Token', '');
+        updateSyncStatusBar('未配置同步 · 点击设置', '');
         return;
       }
       updateSyncStatusBar('同步中...', 'syncing');
       try {
         const result = await pullAndMerge();
-        updateSyncStatusBar('已同步', 'synced');
-        if (result.pulled > 0) {
+        const lastSync = formatTime(Date.now());
+        localStorage.setItem('health_tracker_last_sync', lastSync);
+        updateSyncStatusBar(`已同步 · ${lastSync}`, 'synced');
+        if (result && result.pulled > 0) {
           showToast(`从云端同步了 ${result.pulled} 条记录`, 'success');
         } else {
           showToast('数据已是最新', 'success');
         }
+        refreshAll();
       } catch (err) {
-        updateSyncStatusBar('同步失败', 'error');
-        showToast('同步失败', '');
+        updateSyncStatusBar('同步失败 · 点击重试', 'error');
+        showToast('同步失败: ' + (err.message || '网络错误'), '');
       }
     }
 
@@ -1723,11 +1761,14 @@
       const el = document.getElementById('syncDebug');
       if (!el) return;
       const gistId = getGistId();
+      const token = getGistToken();
       const records = getRecords();
       const raw = getAllRecordsRaw();
       const deleted = raw.filter(r => r.deleted).length;
+      const tokenPreview = token ? (token.substring(0, 8) + '...' + token.substring(token.length - 4)) : '未设置';
       el.innerHTML = `
         <b>诊断信息</b><br>
+        Token: ${tokenPreview}<br>
         Gist ID: ${gistId || '未设置'}<br>
         活跃记录: ${records.length} 条<br>
         已删除: ${deleted} 条<br>
@@ -1736,16 +1777,23 @@
     }
 
     async function resetSync() {
-      if (!confirm('将清除本地 Gist 缓存并重新搜索云端数据，确定要继续吗？')) return;
+      if (!confirm('将清除本地 Gist 缓存并重新搜索云端数据。\n\n⚠️ 请确保其他设备已同步到云端，否则可能丢失数据。\n\n确定要继续吗？')) return;
       localStorage.removeItem(GIST_ID_KEY);
+      updateSyncStatusBar('正在重新初始化...', 'syncing');
       setSyncStatus('正在重新初始化...');
       try {
-        await initGistSync();
+        const result = await initGistSync();
         showSyncDebug();
         refreshAll();
-        showToast('同步已重新初始化', 'success');
+        if (result && result.pulled > 0) {
+          showToast(`重新初始化完成，同步了 ${result.pulled} 条记录`, 'success');
+        } else {
+          showToast('同步已重新初始化', 'success');
+        }
       } catch (err) {
-        setSyncStatus('重新初始化失败: ' + err.message);
+        setSyncStatus('重新初始化失败: ' + (err.message || '未知错误'));
+        updateSyncStatusBar('初始化失败', 'error');
+        showToast('重新初始化失败: ' + (err.message || '未知错误'), '');
       }
     }
 
@@ -1754,7 +1802,9 @@
     function scheduleSync() {
       clearTimeout(syncDebounceTimer);
       syncDebounceTimer = setTimeout(() => {
-        pushToGist().catch(() => {});
+        pushToGist().catch((err) => {
+          console.error('scheduleSync 后台推送失败:', err);
+        });
       }, 5000);
     }
 
@@ -2337,9 +2387,20 @@
       if (savedToken) {
         document.getElementById('gistTokenStatus').textContent = '已配置，正在同步...';
         document.getElementById('gistTokenStatus').className = 'api-key-status saved';
-        initGistSync().then(() => {
+        initGistSync().then((result) => {
           showSyncDebug();
-        }).catch(() => {});
+          if (result && result.pulled > 0) {
+            showToast(`从云端同步了 ${result.pulled} 条记录`, 'success');
+          }
+          updateSyncStatusBar('已同步', 'synced');
+          refreshAll();
+        }).catch((err) => {
+          console.error('同步初始化失败:', err);
+          updateSyncStatusBar('同步失败: ' + (err.message || '未知错误'), 'error');
+          document.getElementById('gistTokenStatus').textContent = '同步失败: ' + (err.message || '未知错误');
+          document.getElementById('gistTokenStatus').className = 'api-key-status';
+          showSyncDebug();
+        });
       }
 
       // Load step goal into input placeholder
@@ -2357,13 +2418,27 @@
       showSyncDebug();
 
       // Periodic sync: pull-merge-push every 2 minutes (safety net)
-      setInterval(() => {
-        if (getGistToken() && getGistId()) {
-          pullAndMerge().then(() => {
-            updateSyncStatusBar('已同步', 'synced');
-          }).catch(() => {
-            updateSyncStatusBar('同步失败', 'error');
-          });
+      // Every 5th cycle (~10 min), re-verify we're on the canonical Gist
+      let syncCycle = 0;
+      setInterval(async () => {
+        if (!getGistToken() || !getGistId()) return;
+        try {
+          syncCycle++;
+          // Re-converge to canonical Gist every 5 cycles (~10 min)
+          if (syncCycle % 5 === 0) {
+            const canonical = await findBestGist(getGistToken());
+            if (canonical && canonical.id !== getGistId()) {
+              localStorage.setItem(GIST_ID_KEY, canonical.id);
+              setSyncStatus('已收敛到云端 Gist');
+            }
+          }
+          // Use pushToGist which does pull-merge-push, ensuring local changes go up too
+          await pushToGist();
+          updateSyncStatusBar('已同步', 'synced');
+          localStorage.setItem('health_tracker_last_sync', formatTime(Date.now()));
+        } catch (err) {
+          console.error('定期同步失败:', err);
+          updateSyncStatusBar('同步失败', 'error');
         }
         refreshAll();
       }, 120000);
@@ -2377,7 +2452,9 @@
             if (result && result.pulled > 0) {
               showToast(`从云端同步了 ${result.pulled} 条记录`, 'success');
             }
-          }).catch(() => {
+            refreshAll();
+          }).catch((err) => {
+            console.error('切回页面同步失败:', err);
             updateSyncStatusBar('同步失败', 'error');
           });
         }
@@ -2386,7 +2463,11 @@
       // Show initial sync status
       if (getGistToken() && getGistId()) {
         const lastSync = localStorage.getItem('health_tracker_last_sync');
-        updateSyncStatusBar(lastSync ? `上次同步: ${lastSync}` : '已配置同步', 'synced');
+        updateSyncStatusBar(lastSync ? `上次同步: ${lastSync}` : '等待首次同步...', 'synced');
+      } else if (getGistToken() && !getGistId()) {
+        updateSyncStatusBar('正在初始化同步...', 'syncing');
+      } else {
+        updateSyncStatusBar('未配置同步 · 点击设置', '');
       }
     }
 
